@@ -20,3 +20,29 @@ INSERT INTO tootaja(eesnimi, perenimi, synniaeg)
 VALUES ('Jummy', 'Päev', '2025-10-13'), 
 ('Maikl', 'Valgus', '2025-10-13'),
 ('Trevis', 'Kapp', '2025-10-13');
+
+
+
+
+
+CREATE TABLE tootja(
+tootjaID int PRIMARY KEY identity (1,1),
+tootjaNimi varchar(50) UNIQUE,
+asukoht TEXT)
+select * from tootja
+INSERT INTO tootja(tootjaNimi, asukoht)
+VALUES ('disney', 'Berlin'),
+('Universal','Hollywood')
+
+CREATE TABLE tootjaFilm(
+tootjafilm int PRIMARY KEY identity (1,1),
+tootjaID int,
+FOREIGN KEY (tootjaID) REFERENCES tootja(tootjaID),
+FilmID int,
+FOREIGN KEY (FilmID) REFERENCES film(filmID)
+);
+Select * from tootjaFilm
+Select * from tootja
+Select * from film;
+INSERT INTO tootjaFilm (tootjaID, FilmID)
+Values (2 ,3)
