@@ -1,0 +1,193 @@
+CREATE TABLE Boks (
+    boks_id   INT IDENTITY(1,1) NOT NULL,
+    nimetus   VARCHAR(50) NOT NULL,
+    asukoht   VARCHAR(100) NOT NULL,
+    mahutavus INT NOT NULL,
+    CONSTRAINT PK_Boks PRIMARY KEY (boks_id),
+    CONSTRAINT CHK_mahutavus CHECK (mahutavus > 0)
+);
+
+CREATE TABLE Vabatahtlik (
+    vabatahtlik_id INT IDENTITY(1,1) NOT NULL,
+    nimi VARCHAR(100) NOT NULL,
+    kontakt VARCHAR(100) NOT NULL,
+    CONSTRAINT PK_Vabatahtlik PRIMARY KEY (vabatahtlik_id),
+    CONSTRAINT UQ_nimi        UNIQUE (nimi)
+);
+
+
+CREATE TABLE Loom (
+    loom_id INT IDENTITY(1,1) NOT NULL,
+    nimi VARCHAR(100) NOT NULL,
+    liik VARCHAR(50) NOT NULL,
+    toug VARCHAR(50) NOT NULL DEFAULT 'Teadmata',
+    sugu CHAR(1) NOT NULL,
+    saabumine_kuupaev DATE NOT NULL DEFAULT GETDATE(),
+    boks_id INT NOT NULL,
+    CONSTRAINT PK_Loom PRIMARY KEY (loom_id),
+    CONSTRAINT CHK_sugu CHECK (sugu IN ('M', 'F')),
+    CONSTRAINT FK_Loom_Boks FOREIGN KEY (boks_id) REFERENCES Boks(boks_id)
+);
+
+CREATE TABLE Koristus (
+    koristus_id INT IDENTITY(1,1) NOT NULL,
+    loom_id INT NOT NULL,
+    vabatahtlik_id INT NOT NULL,
+    kuupaev DATE NOT NULL DEFAULT GETDATE(),
+    kestus INT NOT NULL,
+    CONSTRAINT PK_Koristus PRIMARY KEY (koristus_id),
+    CONSTRAINT CHK_kestus CHECK (kestus > 0),
+    CONSTRAINT FK_Koristus_Loom FOREIGN KEY (loom_id) REFERENCES Loom(loom_id),
+    CONSTRAINT FK_Koristus_Vaba FOREIGN KEY (vabatahtlik_id) REFERENCES Vabatahtlik(vabatahtlik_id)
+);
+
+CREATE TABLE Toitmine (
+    toitmine_id INT IDENTITY(1,1) NOT NULL,
+    loom_id INT NOT NULL,
+    vabatahtlik_id INT NOT NULL,
+    kuupaev DATE NOT NULL DEFAULT GETDATE(),
+    toiduliik VARCHAR(100) NOT NULL DEFAULT 'Segasook',
+    kogus_g INT NOT NULL,
+    CONSTRAINT PK_Toitmine PRIMARY KEY (toitmine_id),
+    CONSTRAINT CHK_kogus        CHECK (kogus_g > 0),
+    CONSTRAINT FK_Toitmine_Loom FOREIGN KEY (loom_id)        REFERENCES Loom(loom_id),
+    CONSTRAINT FK_Toitmine_Vaba FOREIGN KEY (vabatahtlik_id) REFERENCES Vabatahtlik(vabatahtlik_id)
+);
+
+INSERT INTO Boks (nimetus, asukoht, mahutavus) VALUES
+('Boks A1', 'Peahoone, vasak tiib', 5),
+('Boks B2', 'Peahoone, parem tiib', 3),
+('Boks C3', 'Korvalmaja', 8),
+('Boks D4', 'Valitara', 10),
+('Boks E5', 'Isolatsioonituba', 2);
+
+INSERT INTO Vabatahtlik (nimi, kontakt) VALUES
+('Mari Tamm',   'mari.tamm@email.ee'),
+('Jaan Kask',   'jaan.kask@gmail.ee'),
+('Liisa Magi',  'liisa.magi@gmail.com'),
+('Toomas Lepp', 'toomas.lepp@gmail.ee'),
+('Anna Saar',   'anna.saar@email.ee');
+
+INSERT INTO Loom (nimi, liik, toug, sugu, saabumine_kuupaev, boks_id) VALUES
+('Rex',    'Koer',   'Saksa lambakoer',     'M', '2024-01-10', 1),
+('Misi',   'Kass',   'Briti luhikarvaline', 'F', '2024-02-15', 2),
+('Bello',  'Koer',   'Labrador',            'M', '2024-03-05', 1),
+('Luna',   'Kass',   'Teadmata',            'F', '2024-03-20', 3),
+('Pahkel', 'Kuulik', 'Holland Lop',         'M', '2024-04-01', 4),
+('Tirri',  'Koer',   'Beagle',              'F', '2024-04-18', 2),
+('Maru',   'Kass',   'Maine Coon',          'M', '2024-05-02', 3);
+
+INSERT INTO Koristus (loom_id, vabatahtlik_id, kuupaev, kestus) VALUES
+(1, 1, '2024-05-01', 30),
+(2, 2, '2024-05-01', 20),
+(3, 1, '2024-05-02', 25),
+(4, 3, '2024-05-02', 20),
+(5, 4, '2024-05-03', 15),
+(6, 5, '2024-05-03', 30),
+(7, 2, '2024-05-04', 20);
+
+INSERT INTO Toitmine (loom_id, vabatahtlik_id, kuupaev, toiduliik, kogus_g) VALUES
+(1, 1, '2024-05-01', 'Kuivtoit',    300),
+(2, 2, '2024-05-01', 'Margtoit',    150),
+(3, 3, '2024-05-02', 'Kuivtoit',    280),
+(4, 4, '2024-05-02', 'Margtoit',    120),
+(5, 5, '2024-05-03', 'Heinavarred', 80),
+(6, 1, '2024-05-03', 'Kuivtoit',    200),
+(7, 2, '2024-05-04', 'Margtoit',    170);
+
+
+
+IF OBJECT_ID('KoristusedKuupaevaJargi', 'P') IS NOT NULL
+    DROP PROCEDURE KoristusedKuupaevaJargi;
+GO
+
+CREATE PROCEDURE KoristusedKuupaevaJargi
+    @p_kuupaev DATE
+AS
+BEGIN
+    SELECT
+        l.nimi    AS loom,
+        l.liik    AS liik,
+        v.nimi    AS vabatahtlik,
+        k.kuupaev AS kuupaev,
+        k.kestus  AS kestus_minutites
+    FROM Koristus k
+    JOIN Loom        l ON k.loom_id        = l.loom_id
+    JOIN Vabatahtlik v ON k.vabatahtlik_id = v.vabatahtlik_id
+    WHERE k.kuupaev = @p_kuupaev
+    ORDER BY l.nimi;
+END;
+GO
+
+
+IF OBJECT_ID('LisaUusLoom', 'P') IS NOT NULL
+    DROP PROCEDURE LisaUusLoom;
+GO
+
+CREATE PROCEDURE LisaUusLoom
+    @p_nimi    VARCHAR(100),
+    @p_liik    VARCHAR(50),
+    @p_toug    VARCHAR(50),
+    @p_sugu    CHAR(1),
+    @p_boks_id INT
+AS
+BEGIN
+    DECLARE @v_mahutavus INT;
+    DECLARE @v_praegune  INT;
+
+    SELECT @v_mahutavus = mahutavus
+    FROM Boks WHERE boks_id = @p_boks_id;
+
+    SELECT @v_praegune = COUNT(*)
+    FROM Loom WHERE boks_id = @p_boks_id;
+
+    IF @v_praegune >= @v_mahutavus
+    BEGIN
+        RAISERROR('Boks on tais! Vali teine boks.', 16, 1);
+    END
+    ELSE
+    BEGIN
+        INSERT INTO Loom (nimi, liik, toug, sugu, saabumine_kuupaev, boks_id)
+        VALUES (
+            @p_nimi,
+            @p_liik,
+            ISNULL(@p_toug, 'Teadmata'),
+            @p_sugu,
+            GETDATE(),
+            @p_boks_id
+        );
+
+        SELECT SCOPE_IDENTITY() AS uus_loom_id,
+               'Loom edukalt lisatud!' AS teade;
+    END;
+END;
+GO
+
+
+IF OBJECT_ID('VabatahtlikuAruanne', 'P') IS NOT NULL
+    DROP PROCEDURE VabatahtlikuAruanne;
+GO
+
+CREATE PROCEDURE VabatahtlikuAruanne
+    @p_vabatahtlik_id INT
+AS
+BEGIN
+    SELECT
+        v.nimi                        AS vabatahtlik,
+        COUNT(DISTINCT k.koristus_id) AS koristuste_arv,
+        COUNT(DISTINCT t.toitmine_id) AS toitmiste_arv,
+        ISNULL(SUM(k.kestus), 0)      AS kokku_koristus_min,
+        ISNULL(SUM(t.kogus_g), 0)     AS kokku_toit_g
+    FROM Vabatahtlik v
+    LEFT JOIN Koristus k ON v.vabatahtlik_id = k.vabatahtlik_id
+    LEFT JOIN Toitmine t ON v.vabatahtlik_id = t.vabatahtlik_id
+    WHERE v.vabatahtlik_id = @p_vabatahtlik_id
+    GROUP BY v.nimi;
+END;
+GO
+
+EXEC KoristusedKuupaevaJargi '2024-05-01';
+
+EXEC LisaUusLoom 'Karu', 'Koer', 'Husky', 'M', 3;
+
+EXEC VabatahtlikuAruanne 1;
